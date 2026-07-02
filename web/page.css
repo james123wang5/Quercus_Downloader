@@ -1,0 +1,38 @@
+body {
+  margin: 0;
+  color: #2f3b45;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #fff;
+}
+
+.canvas-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+h1 {
+  margin: 0 0 24px;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+article {
+  line-height: 1.55;
+}
+
+img,
+iframe,
+video {
+  max-width: 100%;
+}
+
+a {
+  color: #2f6fbf;
+}
+
+pre {
+  overflow: auto;
+  padding: 12px;
+  background: #f5f6f7;
+}

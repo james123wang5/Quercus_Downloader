@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Course Archive</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/web/styles.css?v=27">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="global-nav" aria-label="Global navigation">
+      <div class="crest" title="University of Toronto">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M32 7c-6 0-9 4-9 8-6-2-12 2-12 8 0 5 4 8 8 8-4 2-6 5-6 9 0 7 8 10 14 6v9h-8v4h26v-4h-8v-9c6 4 14 1 14-6 0-4-2-7-6-9 5 0 8-3 8-8 0-6-6-10-12-8 0-4-3-8-9-8z"/>
+          <path d="M25 20c-4 2-6 5-6 8m26 0c0-3-2-6-6-8M28 42h8" />
+        </svg>
+      </div>
+      <button class="nav-icon" data-global-tool="account" title="Account" aria-label="Account">
+        <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>Account</span>
+      </button>
+      <button class="nav-icon active" data-global="dashboard" title="Dashboard" aria-label="Dashboard">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-icon" data-global="courses" title="Courses" aria-label="Courses">
+        <svg viewBox="0 0 24 24"><path d="M7 4h11a2 2 0 0 1 2 2v14H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z"/><path d="M7 17h13M8 8h8"/></svg>
+        <span>Courses</span>
+      </button>
+      <button class="nav-icon" data-global-tool="groups" title="Groups" aria-label="Groups">
+        <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a5 5 0 0 1 10 0M11 20a5 5 0 0 1 10 0"/></svg>
+        <span>Groups</span>
+      </button>
+      <button class="nav-icon" data-global-tool="calendar" title="Calendar" aria-label="Calendar">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v15H5zM8 3v4M16 3v4M5 10h14"/></svg>
+        <span>Calendar</span>
+      </button>
+      <button class="nav-icon" data-global-tool="inbox" title="Inbox" aria-label="Inbox">
+        <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 4v16M8 9h8M8 14h8"/></svg>
+        <span>Inbox</span>
+      </button>
+      <button class="nav-icon" data-global-tool="history" title="History" aria-label="History">
+        <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6M4 4v6h6M12 8v5l3 2"/></svg>
+        <span>History</span>
+      </button>
+      <button class="nav-icon" data-global-tool="help" title="Help" aria-label="Help">
+        <svg viewBox="0 0 24 24"><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1.5 1-2 1.6-2 3M12 18h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        <span>Help</span>
+      </button>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button id="backButton" class="menu-button" title="Back" hidden>&lt;</button>
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle"></p>
+          <button id="downloadCourseTop" class="download-course-button" hidden>
+            <span aria-hidden="true">↓</span> Download course content
+          </button>
+        </div>
+        <button class="dashboard-options" title="Dashboard options" aria-label="Dashboard options">⋮</button>
+        <div class="brand">QUERCUS<br><span>UNIVERSITY OF TORONTO</span></div>
+      </header>
+
+      <section id="dashboardView" class="view">
+        <section class="dashboard-main">
+          <div class="dashboard-toolbar" hidden>
+            <label class="dashboard-search">
+              <span>Search courses</span>
+              <input id="dashboardSearch" type="search" placeholder="Search by course name, code, or term">
+            </label>
+            <div class="dashboard-stats" aria-label="Archive summary">
+              <div><strong id="dashboardCourseCount">0</strong><span>Courses shown</span></div>
+              <div><strong id="dashboardCurrentCount">0</strong><span>Current</span></div>
+              <div><strong id="dashboardPastCount">0</strong><span>Past</span></div>
+            </div>
+          </div>
+          <div class="course-grid" id="courseGrid"></div>
+        </section>
+        <aside class="right-rail">
+          <h2>To Do</h2>
+          <p>Nothing for now</p>
+          <h2>Recent Feedback</h2>
+          <p>Nothing for now</p>
+          <button class="wide-button" data-global="courses">View Grades</button>
+        </aside>
+      </section>
+
+      <footer class="ut-footer" aria-label="University of Toronto mark">
+        <div class="ut-shield">UT</div>
+        <div><span>UNIVERSITY OF</span><strong>TORONTO</strong></div>
+      </footer>
+
+      <section id="coursesView" class="view courses-page" hidden>
+        <h2>All Courses</h2>
+        <div id="currentCoursesTable" class="course-table"></div>
+        <h2>Past Enrollments</h2>
+        <div id="pastCoursesTable" class="course-table"></div>
+      </section>
+
+      <section id="globalToolView" class="view global-tool-view" hidden></section>
+
+      <section id="courseView" class="view course-layout" hidden>
+        <aside class="course-nav">
+          <div id="courseTerm" class="term"></div>
+          <div id="courseTabs"></div>
+          <div id="externalLinks"></div>
+        </aside>
+
+        <section class="course-content">
+          <div id="courseActions" class="course-actions">
+            <button id="collapseButton">Collapse All</button>
+            <button id="openOriginalButton">Export Course Content</button>
+          </div>
+          <div id="panelModules" class="panel"></div>
+          <div id="panelAnnouncements" class="panel" hidden></div>
+          <div id="panelFiles" class="panel" hidden></div>
+          <div id="panelPages" class="panel" hidden></div>
+          <div id="panelAssignments" class="panel" hidden></div>
+          <div id="panelGrades" class="panel" hidden></div>
+          <div id="panelQuizzes" class="panel" hidden></div>
+          <div id="panelDiscussions" class="panel" hidden></div>
+          <div id="panelPageDetail" class="panel" hidden></div>
+        </section>
+
+        <aside class="viewer">
+          <div class="course-tool-list">
+            <button data-course-utility="academic-integrity"><span class="tool-icon icon-info"></span> Academic Integrity</button>
+            <button data-course-utility="privacy"><span class="tool-icon icon-info"></span> Quercus Privacy FAQ</button>
+            <button data-course-utility="mental-health"><span class="tool-icon icon-info"></span> Student Mental Health</button>
+            <button data-course-utility="stream"><span class="tool-icon icon-stream"></span> View Course Stream</button>
+            <button data-course-utility="calendar"><span class="tool-icon icon-calendar"></span> View Course Calendar</button>
+            <button data-course-utility="notifications"><span class="tool-icon icon-bell"></span> View Course Notifications</button>
+          </div>
+          <div class="course-status">
+            <h2>To Do</h2>
+            <p>Nothing for now</p>
+            <h2>Recent Feedback</h2>
+            <p>Nothing for now</p>
+          </div>
+          <div id="viewerHead" class="viewer-head">
+            <h2 id="viewerTitle">Preview</h2>
+            <a id="viewerOpen" href="#" target="_blank" rel="noreferrer" hidden>Open</a>
+          </div>
+          <div id="viewerBody" class="viewer-body empty">Select an archived item</div>
+        </aside>
+      </section>
+
+      <div id="fileOverlay" class="file-overlay" hidden>
+        <div class="file-overlay-bar">
+          <div id="fileOverlayTitle">File preview</div>
+          <div class="file-overlay-actions">
+            <a id="fileOverlayDownload" href="#" target="_blank" rel="noreferrer">Download</a>
+            <button id="fileOverlayInfo">Info</button>
+            <button id="fileOverlayClose">Close</button>
+          </div>
+        </div>
+        <iframe id="fileOverlayFrame" title="File preview"></iframe>
+      </div>
+
+      <section id="emptyView" class="empty-state" hidden>
+        <h2>No archive found</h2>
+        <p>Run the sync script first, then refresh this page.</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="/web/app.js?v=27"></script>
+</body>
+</html>

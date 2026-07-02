@@ -1,0 +1,18 @@
+# Local secrets
+config/
+.env
+
+# Local archives and downloaded course materials
+archive/
+quercus_probe_output/
+logs/
+
+# Local/generated notes
+CURRENT_CAPABILITIES.md
+PRODUCT_ROADMAP.md
+
+# Python/cache/editor files
+__pycache__/
+*.py[cod]
+.DS_Store
+web/.Rhistory
