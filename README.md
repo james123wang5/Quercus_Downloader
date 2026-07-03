@@ -22,8 +22,16 @@ Requires Python 3.10 or newer.
 git clone https://github.com/james123wang5/QuercusCanvasDownloader.git
 cd QuercusCanvasDownloader
 python3 save_token.py
-python3 sync_quercus.py --download-files --workers 1
+python3 sync_quercus.py
 python3 backend.py
+```
+
+The command above downloads the course list, navigation, pages, assignments, announcements, grades, and other metadata. It does not download every course file.
+
+To also download files, run:
+
+```bash
+python3 sync_quercus.py --download-files --workers 1
 ```
 
 Open:
@@ -36,13 +44,13 @@ http://127.0.0.1:8765
 
 ## Commands
 
-Sync course metadata and pages without downloading every file:
+Sync the course list, course navigation, pages, assignments, announcements, grades, and other metadata without downloading every file:
 
 ```bash
 python3 sync_quercus.py
 ```
 
-Download all accessible courses:
+Download files for all accessible courses:
 
 ```bash
 python3 sync_quercus.py --download-files --workers 1
@@ -155,8 +163,16 @@ web/              Local course browser
 git clone https://github.com/james123wang5/QuercusCanvasDownloader.git
 cd QuercusCanvasDownloader
 python3 save_token.py
-python3 sync_quercus.py --download-files --workers 1
+python3 sync_quercus.py
 python3 backend.py
+```
+
+上面的命令只会拉取课程列表、课程导航、页面、作业、公告、成绩和其他元数据，不会下载所有课程文件。
+
+如果要同时下载课程文件，再运行：
+
+```bash
+python3 sync_quercus.py --download-files --workers 1
 ```
 
 浏览器打开：
@@ -169,13 +185,13 @@ http://127.0.0.1:8765
 
 ## 常用命令
 
-只同步课程结构和页面：
+只拉取课程列表、课程导航、页面、作业、公告、成绩和其他元数据，不下载所有文件：
 
 ```bash
 python3 sync_quercus.py
 ```
 
-下载所有可访问课程：
+下载所有可访问课程的文件：
 
 ```bash
 python3 sync_quercus.py --download-files --workers 1
