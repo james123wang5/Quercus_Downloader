@@ -1,20 +1,24 @@
 body {
   margin: 0;
-  color: #2f3b45;
-  font-family: Arial, Helvetica, sans-serif;
+  color: #2d3b45;
+  font-family: "Lato", "Helvetica Neue", Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
   background: #fff;
 }
 
 .canvas-page {
-  max-width: 900px;
+  max-width: 980px;
   margin: 0 auto;
-  padding: 28px;
+  padding: 30px 34px;
 }
 
 h1 {
   margin: 0 0 24px;
-  font-size: 30px;
-  font-weight: 500;
+  color: #2d3b45;
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1.2;
 }
 
 article {
@@ -28,11 +32,24 @@ video {
 }
 
 a {
-  color: #2f6fbf;
+  color: #2b7abc;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid #c7cdd1;
+  padding: 8px 10px;
+  vertical-align: top;
 }
 
 pre {
   overflow: auto;
   padding: 12px;
-  background: #f5f6f7;
+  border: 1px solid #c7cdd1;
+  background: #f5f5f5;
 }

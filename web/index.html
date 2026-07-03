@@ -3,64 +3,71 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Course Archive</title>
+  <title>Quercus Archive</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="/web/styles.css?v=27">
+  <link rel="stylesheet" href="/web/styles.css?v=29">
 </head>
 <body>
   <div class="app-shell">
-    <aside class="global-nav" aria-label="Global navigation">
-      <div class="crest" title="University of Toronto">
+    <aside class="global-nav ic-app-header" aria-label="Global navigation">
+      <div class="crest" title="University of Toronto" aria-label="University of Toronto">
         <svg viewBox="0 0 64 64" aria-hidden="true">
           <path d="M32 7c-6 0-9 4-9 8-6-2-12 2-12 8 0 5 4 8 8 8-4 2-6 5-6 9 0 7 8 10 14 6v9h-8v4h26v-4h-8v-9c6 4 14 1 14-6 0-4-2-7-6-9 5 0 8-3 8-8 0-6-6-10-12-8 0-4-3-8-9-8z"/>
           <path d="M25 20c-4 2-6 5-6 8m26 0c0-3-2-6-6-8M28 42h8" />
         </svg>
       </div>
-      <button class="nav-icon" data-global-tool="account" title="Account" aria-label="Account">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global-tool="account" title="Account" aria-label="Account">
         <svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
         <span>Account</span>
       </button>
-      <button class="nav-icon active" data-global="dashboard" title="Dashboard" aria-label="Dashboard">
+      <button class="nav-icon active ic-app-header__menu-list-link" data-global="dashboard" title="Dashboard" aria-label="Dashboard">
         <svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
         <span>Dashboard</span>
       </button>
-      <button class="nav-icon" data-global="courses" title="Courses" aria-label="Courses">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global="courses" title="Courses" aria-label="Courses">
         <svg viewBox="0 0 24 24"><path d="M7 4h11a2 2 0 0 1 2 2v14H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3z"/><path d="M7 17h13M8 8h8"/></svg>
         <span>Courses</span>
       </button>
-      <button class="nav-icon" data-global-tool="groups" title="Groups" aria-label="Groups">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global-tool="groups" title="Groups" aria-label="Groups">
         <svg viewBox="0 0 24 24"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a5 5 0 0 1 10 0M11 20a5 5 0 0 1 10 0"/></svg>
         <span>Groups</span>
       </button>
-      <button class="nav-icon" data-global-tool="calendar" title="Calendar" aria-label="Calendar">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global-tool="calendar" title="Calendar" aria-label="Calendar">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v15H5zM8 3v4M16 3v4M5 10h14"/></svg>
         <span>Calendar</span>
       </button>
-      <button class="nav-icon" data-global-tool="inbox" title="Inbox" aria-label="Inbox">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global-tool="inbox" title="Inbox" aria-label="Inbox">
         <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 4v16M8 9h8M8 14h8"/></svg>
         <span>Inbox</span>
       </button>
-      <button class="nav-icon" data-global-tool="history" title="History" aria-label="History">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global-tool="history" title="History" aria-label="History">
         <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6M4 4v6h6M12 8v5l3 2"/></svg>
         <span>History</span>
       </button>
-      <button class="nav-icon" data-global-tool="help" title="Help" aria-label="Help">
+      <button class="nav-icon ic-app-header__menu-list-link" data-global-tool="help" title="Help" aria-label="Help">
         <svg viewBox="0 0 24 24"><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1.5 1-2 1.6-2 3M12 18h.01"/><circle cx="12" cy="12" r="9"/></svg>
         <span>Help</span>
+      </button>
+      <button id="globalNavToggle" class="nav-icon nav-collapse-button ic-app-header__menu-list-link" title="Collapse global navigation" aria-label="Collapse global navigation" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        <span>Collapse</span>
       </button>
     </aside>
 
     <main class="main-area">
       <header class="topbar">
         <button id="backButton" class="menu-button" title="Back" hidden>&lt;</button>
+        <button id="courseNavToggle" class="menu-button course-nav-toggle" title="Toggle course navigation" aria-label="Toggle course navigation" aria-pressed="false" hidden>
+          <span aria-hidden="true">☰</span>
+        </button>
         <div>
           <h1 id="pageTitle">Dashboard</h1>
           <p id="pageSubtitle"></p>
-          <button id="downloadCourseTop" class="download-course-button" hidden>
-            <span aria-hidden="true">↓</span> Download course content
-          </button>
         </div>
         <button class="dashboard-options" title="Dashboard options" aria-label="Dashboard options">⋮</button>
+        <button id="immersiveReaderButton" class="immersive-reader-button Button" hidden>
+          <span aria-hidden="true">▣</span> Immersive Reader
+        </button>
         <div class="brand">QUERCUS<br><span>UNIVERSITY OF TORONTO</span></div>
       </header>
 
@@ -77,14 +84,14 @@
               <div><strong id="dashboardPastCount">0</strong><span>Past</span></div>
             </div>
           </div>
-          <div class="course-grid" id="courseGrid"></div>
+          <div class="course-grid ic-DashboardCard__box__container" id="courseGrid"></div>
         </section>
         <aside class="right-rail">
           <h2>To Do</h2>
           <p>Nothing for now</p>
           <h2>Recent Feedback</h2>
           <p>Nothing for now</p>
-          <button class="wide-button" data-global="courses">View Grades</button>
+          <button class="wide-button Button" data-global="courses">View Grades</button>
         </aside>
       </section>
 
@@ -127,12 +134,12 @@
 
         <aside class="viewer">
           <div class="course-tool-list">
-            <button data-course-utility="academic-integrity"><span class="tool-icon icon-info"></span> Academic Integrity</button>
-            <button data-course-utility="privacy"><span class="tool-icon icon-info"></span> Quercus Privacy FAQ</button>
-            <button data-course-utility="mental-health"><span class="tool-icon icon-info"></span> Student Mental Health</button>
-            <button data-course-utility="stream"><span class="tool-icon icon-stream"></span> View Course Stream</button>
-            <button data-course-utility="calendar"><span class="tool-icon icon-calendar"></span> View Course Calendar</button>
-            <button data-course-utility="notifications"><span class="tool-icon icon-bell"></span> View Course Notifications</button>
+            <button class="Button" data-course-utility="academic-integrity"><span class="tool-icon icon-info"></span> Academic Integrity</button>
+            <button class="Button" data-course-utility="privacy"><span class="tool-icon icon-info"></span> Quercus Privacy FAQ</button>
+            <button class="Button" data-course-utility="mental-health"><span class="tool-icon icon-info"></span> Student Mental Health</button>
+            <button class="Button" data-course-utility="stream"><span class="tool-icon icon-stream"></span> View Course Stream</button>
+            <button class="Button" data-course-utility="calendar"><span class="tool-icon icon-calendar"></span> View Course Calendar</button>
+            <button class="Button" data-course-utility="notifications"><span class="tool-icon icon-bell"></span> View Course Notifications</button>
           </div>
           <div class="course-status">
             <h2>To Do</h2>
@@ -167,6 +174,6 @@
     </main>
   </div>
 
-  <script src="/web/app.js?v=27"></script>
+  <script src="/web/app.js?v=29"></script>
 </body>
 </html>

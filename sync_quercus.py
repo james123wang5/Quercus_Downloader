@@ -388,26 +388,51 @@ def archive_course(
     if course.get("_archive_enrollment_state"):
         course_metadata["_archive_enrollment_state"] = course["_archive_enrollment_state"]
 
-    modules, modules_warning = client.try_paged_get(
-        f"/api/v1/courses/{course_id}/modules",
-        {"include[]": "items"},
-    )
-    pages, pages_warning = client.try_paged_get(f"/api/v1/courses/{course_id}/pages")
-    assignments, assignments_warning = client.try_paged_get(f"/api/v1/courses/{course_id}/assignments")
-    gradebook, gradebook_warning = fetch_gradebook(client, course_id)
-    quizzes, quizzes_warning = client.try_paged_get(f"/api/v1/courses/{course_id}/quizzes")
-    discussions, discussions_warning = client.try_paged_get(f"/api/v1/courses/{course_id}/discussion_topics")
-    announcements, announcements_warning = client.try_paged_get(
-        "/api/v1/announcements",
-        {
-            "context_codes[]": f"course_{course_id}",
-            "start_date": "2000-01-01",
-            "end_date": "2035-12-31",
-            "include[]": "sections",
-        },
-    )
-    tabs, tabs_warning = client.try_paged_get(f"/api/v1/courses/{course_id}/tabs")
-    files, files_warning = fetch_course_files(client, course_id)
+    def fetch_initial_course_data() -> dict[str, tuple[Any, str | None]]:
+        jobs = {
+            "modules": lambda: client.try_paged_get(
+                f"/api/v1/courses/{course_id}/modules",
+                {"include[]": "items"},
+            ),
+            "pages": lambda: client.try_paged_get(f"/api/v1/courses/{course_id}/pages"),
+            "assignments": lambda: client.try_paged_get(f"/api/v1/courses/{course_id}/assignments"),
+            "grades": lambda: fetch_gradebook(client, course_id),
+            "quizzes": lambda: client.try_paged_get(f"/api/v1/courses/{course_id}/quizzes"),
+            "discussions": lambda: client.try_paged_get(f"/api/v1/courses/{course_id}/discussion_topics"),
+            "announcements": lambda: client.try_paged_get(
+                "/api/v1/announcements",
+                {
+                    "context_codes[]": f"course_{course_id}",
+                    "start_date": "2000-01-01",
+                    "end_date": "2035-12-31",
+                    "include[]": "sections",
+                },
+            ),
+            "tabs": lambda: client.try_paged_get(f"/api/v1/courses/{course_id}/tabs"),
+            "files": lambda: fetch_course_files(client, course_id),
+        }
+        results: dict[str, tuple[Any, str | None]] = {}
+        with ThreadPoolExecutor(max_workers=min(6, len(jobs))) as executor:
+            futures = {executor.submit(job): name for name, job in jobs.items()}
+            for future in as_completed(futures):
+                name = futures[future]
+                try:
+                    results[name] = future.result()
+                except Exception as exc:
+                    empty: Any = {} if name == "grades" else []
+                    results[name] = (empty, str(exc))
+        return results
+
+    initial = fetch_initial_course_data()
+    modules, modules_warning = initial["modules"]
+    pages, pages_warning = initial["pages"]
+    assignments, assignments_warning = initial["assignments"]
+    gradebook, gradebook_warning = initial["grades"]
+    quizzes, quizzes_warning = initial["quizzes"]
+    discussions, discussions_warning = initial["discussions"]
+    announcements, announcements_warning = initial["announcements"]
+    tabs, tabs_warning = initial["tabs"]
+    files, files_warning = initial["files"]
 
     warnings = {
         "course": course_detail_warning,
@@ -1586,6 +1611,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--course-id", action="append", type=int, help="Archive only this Canvas course id. Repeatable.")
     parser.add_argument("--limit", type=int, help="Limit number of courses for testing.")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of courses to archive in parallel. Use 1 for fully serial sync.",
+    )
     return parser.parse_args()
 
 
@@ -1650,18 +1681,45 @@ def main() -> int:
     download_files = bool(args.download_files and not args.no_download)
     print("Mode:", "metadata + file download" if download_files else "metadata/pages only")
 
-    course_manifests: list[dict[str, Any]] = []
+    course_manifests_by_id: dict[int | str, dict[str, Any]] = {}
     failed_courses: list[tuple[int | str, str, str]] = []
-    for course in courses:
+
+    def archive_one(course: dict[str, Any]) -> tuple[int | str, dict[str, Any] | None, tuple[int | str, str, str] | None]:
         course_id = course.get("id", "unknown")
         course_title = str(course.get("name") or course.get("course_code") or course_id)
         try:
-            course_manifests.append(archive_course(client, course, archive_dir, download_files=download_files))
+            return course_id, archive_course(client, course, archive_dir, download_files=download_files), None
         except Exception as exc:
-            failed_courses.append((course_id, course_title, str(exc)))
-            print(f"\nCourse {course_id}: {course_title}")
-            print(f"  failed: {exc}")
-            continue
+            return course_id, None, (course_id, course_title, str(exc))
+
+    workers = max(1, min(args.workers, len(courses) or 1))
+    if workers > 1 and len(courses) > 1:
+        print(f"Archiving up to {workers} courses in parallel")
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(archive_one, course): course for course in courses}
+            for future in as_completed(futures):
+                course_id, manifest_entry, failure = future.result()
+                if manifest_entry is not None:
+                    course_manifests_by_id[course_id] = manifest_entry
+                if failure is not None:
+                    failed_courses.append(failure)
+                    print(f"\nCourse {failure[0]}: {failure[1]}")
+                    print(f"  failed: {failure[2]}")
+    else:
+        for course in courses:
+            course_id, manifest_entry, failure = archive_one(course)
+            if manifest_entry is not None:
+                course_manifests_by_id[course_id] = manifest_entry
+            if failure is not None:
+                failed_courses.append(failure)
+                print(f"\nCourse {failure[0]}: {failure[1]}")
+                print(f"  failed: {failure[2]}")
+
+    course_manifests = [
+        course_manifests_by_id[course.get("id")]
+        for course in courses
+        if course.get("id") in course_manifests_by_id
+    ]
 
     manifest = build_manifest(
         archive_dir,

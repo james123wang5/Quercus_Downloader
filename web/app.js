@@ -6,6 +6,8 @@ const state = {
   restoringLocation: false,
   collapsed: false,
   dashboardQuery: "",
+  globalNavCollapsed: false,
+  courseNavCollapsed: false,
 };
 
 const els = {
@@ -27,6 +29,9 @@ const els = {
   currentCoursesTable: document.querySelector("#currentCoursesTable"),
   pastCoursesTable: document.querySelector("#pastCoursesTable"),
   backButton: document.querySelector("#backButton"),
+  globalNavToggle: document.querySelector("#globalNavToggle"),
+  courseNavToggle: document.querySelector("#courseNavToggle"),
+  immersiveReaderButton: document.querySelector("#immersiveReaderButton"),
   downloadCourseTop: document.querySelector("#downloadCourseTop"),
   courseTerm: document.querySelector("#courseTerm"),
   courseTabs: document.querySelector("#courseTabs"),
@@ -80,6 +85,7 @@ function showEmpty() {
     <p>Run the sync script first, then refresh this page.</p>
   `;
   els.backButton.hidden = true;
+  setCourseChromeVisible(false);
   setTopDownloadVisible(false);
   els.pageTitle.textContent = "Course Archive";
   els.pageSubtitle.textContent = "";
@@ -96,6 +102,7 @@ function renderDashboard() {
   els.dashboardView.hidden = false;
   if (els.utFooter) els.utFooter.hidden = false;
   els.backButton.hidden = true;
+  setCourseChromeVisible(false);
   setTopDownloadVisible(false);
   els.pageTitle.textContent = "Dashboard";
   els.pageSubtitle.textContent = "";
@@ -122,25 +129,52 @@ function renderDashboard() {
   }
 
   for (const course of courses) {
-    const card = document.createElement("button");
-    card.className = "course-card";
+    const card = document.createElement("div");
+    card.className = "course-card ic-DashboardCard";
     card.dataset.courseId = course.id;
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", displayCourseName(course));
+    card.style.setProperty("--course-card-color", courseColor(course));
     card.innerHTML = `
-      <div class="course-color"></div>
-      <div class="course-card-body">
-        <div class="course-card-title">
-          <h2>${escapeHtml(displayCourseName(course))}</h2>
-        </div>
-        <p class="course-code">${escapeHtml(course.course_code || displayCourseName(course))}</p>
-        <p>${escapeHtml(course.term || course.state || "")}</p>
-        <div class="course-card-actions" aria-hidden="true">
-          <span class="card-action icon-assignment"></span>
-          <span class="card-action icon-announcement"></span>
-          <span class="card-action icon-discussion"></span>
+      <div class="ic-DashboardCard__header">
+        <div class="course-color ic-DashboardCard__header_hero" aria-hidden="true"></div>
+        <div class="ic-DashboardCard__header-button-bg" aria-hidden="true"></div>
+        <button type="button" class="Button Button--icon-action-rev ic-DashboardCard__header-button" aria-label="Course card settings" tabindex="-1">
+          <span class="card-kebab" aria-hidden="true">⋮</span>
+        </button>
+        <div class="ic-DashboardCard__link">
+          <div class="course-card-body ic-DashboardCard__header_content">
+            <div class="course-card-title">
+              <h2 class="ic-DashboardCard__header-title ellipsis" title="${escapeHtml(displayCourseName(course))}">
+                <span style="color:${courseColor(course)}">${escapeHtml(displayCourseName(course))}</span>
+              </h2>
+            </div>
+            <div class="course-code ic-DashboardCard__header-subtitle ellipsis" title="${escapeHtml(course.course_code || displayCourseName(course))}">
+              ${escapeHtml(course.course_code || displayCourseName(course))}
+            </div>
+            <div class="ic-DashboardCard__header-term ellipsis" title="${escapeHtml(course.term || course.state || "")}">
+              ${escapeHtml(course.term || course.state || "")}
+            </div>
+          </div>
         </div>
       </div>
+      <nav class="course-card-actions ic-DashboardCard__action-container" aria-label="Actions for ${escapeHtml(displayCourseName(course))}">
+        <span class="ic-DashboardCard__action assignments"><span class="ic-DashboardCard__action-layout"><span class="card-action icon-assignment"></span></span></span>
+        <span class="ic-DashboardCard__action announcements"><span class="ic-DashboardCard__action-layout"><span class="card-action icon-announcement"></span></span></span>
+        <span class="ic-DashboardCard__action discussions"><span class="ic-DashboardCard__action-layout"><span class="card-action icon-discussion"></span></span></span>
+      </nav>
     `;
+    card.querySelector(".ic-DashboardCard__header-button").addEventListener("click", event => {
+      event.stopPropagation();
+    });
     card.addEventListener("click", () => openCourse(course.id));
+    card.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCourse(course.id);
+      }
+    });
     els.courseGrid.appendChild(card);
   }
 }
@@ -190,6 +224,7 @@ function renderCoursesPage() {
   els.coursesView.hidden = false;
   if (els.utFooter) els.utFooter.hidden = true;
   els.backButton.hidden = true;
+  setCourseChromeVisible(false);
   setTopDownloadVisible(false);
   els.pageTitle.textContent = "All Courses";
   els.pageSubtitle.textContent = "";
@@ -266,6 +301,7 @@ async function openCourse(courseId) {
   els.courseView.classList.remove("detail-open");
   els.courseView.classList.remove("no-right");
   els.backButton.hidden = false;
+  setCourseChromeVisible(true);
   setTopDownloadVisible(true);
   els.mainArea.classList.add("course-open");
   els.pageTitle.textContent = `${state.currentCourse.course_code || state.currentCourse.name || `Course ${courseId}`} > Home`;
@@ -330,17 +366,38 @@ function renderCourseNav() {
 
 function normalizedCourseTabs() {
   const rawTabs = (state.currentCourse.tabs || []).filter(tab => tab && tab.id && tab.label);
-  if (rawTabs.length) return rawTabs;
+  if (rawTabs.length) return appendLocalArchiveTabs(rawTabs);
   const tabs = [{ id: "home", label: "Home", html_url: state.currentCourse.home_url }];
   if (state.currentCourse.syllabus) tabs.push({ id: "syllabus", label: "Syllabus" });
   if ((state.currentCourse.announcements || []).length) tabs.push({ id: "announcements", label: "Announcements" });
   if ((state.currentCourse.modules || []).length) tabs.push({ id: "modules", label: "Modules" });
-  if ((state.currentCourse.pages || []).length) tabs.push({ id: "pages", label: "Pages" });
   if ((state.currentCourse.assignments || []).length) tabs.push({ id: "assignments", label: "Assignments" });
   if ((state.currentCourse.quizzes || []).length) tabs.push({ id: "quizzes", label: "Quizzes" });
   if ((state.currentCourse.discussions || []).length) tabs.push({ id: "discussions", label: "Discussions" });
   tabs.push({ id: "grades", label: "Grades" });
+  if ((state.currentCourse.files || []).length) tabs.push({ id: "files", label: "Files" });
+  if ((state.currentCourse.pages || []).length) tabs.push({ id: "pages", label: "Pages" });
   return tabs;
+}
+
+function appendLocalArchiveTabs(rawTabs) {
+  const tabs = [...rawTabs];
+  const has = (...ids) => tabs.some(tab => ids.includes(tab.id));
+  const assignmentTab = tabs.find(tab => tab.id === "assignments")
+    || ((state.currentCourse.assignments || []).length ? { id: "assignments", label: "Assignments" } : null);
+  const filesTab = tabs.find(tab => tab.id === "files")
+    || ((state.currentCourse.files || []).length ? { id: "files", label: "Files" } : null);
+  const pagesTab = tabs.find(tab => tab.id === "pages" || tab.id === "wiki")
+    || ((state.currentCourse.pages || []).length ? { id: "pages", label: "Pages" } : null);
+  const ordered = tabs.filter(tab => !["files", "pages", "wiki"].includes(tab.id));
+
+  if (state.currentCourse.grades && !has("grades")) ordered.push({ id: "grades", label: "Grades" });
+  if ((state.currentCourse.quizzes || []).length && !has("quizzes")) ordered.push({ id: "quizzes", label: "Quizzes" });
+  if ((state.currentCourse.discussions || []).length && !has("discussions")) ordered.push({ id: "discussions", label: "Discussions" });
+  if (assignmentTab && !has("assignments")) ordered.push(assignmentTab);
+  if (filesTab) ordered.push(filesTab);
+  if (pagesTab) ordered.push(pagesTab);
+  return ordered;
 }
 
 function handleCourseTab(tab, label) {
@@ -447,13 +504,15 @@ function renderCourseArchiveStatus() {
     <p>Nothing for now</p>
     <h2>Recent Feedback</h2>
     <p>Nothing for now</p>
-    <h2>Archive Status</h2>
-    <div class="archive-status-box">
-      <div><strong>${downloadedCount}</strong><span>Downloaded files</span></div>
-      <div><strong>${fileCount}</strong><span>Known files</span></div>
-      <div><strong>${pageCount}</strong><span>Pages</span></div>
-      <div><strong>${announcementCount}</strong><span>Announcements</span></div>
-    </div>
+    <details class="local-archive-details">
+      <summary>Local archive status</summary>
+      <div class="archive-status-box">
+        <div><strong>${downloadedCount}</strong><span>Downloaded files</span></div>
+        <div><strong>${fileCount}</strong><span>Known files</span></div>
+        <div><strong>${pageCount}</strong><span>Pages</span></div>
+        <div><strong>${announcementCount}</strong><span>Announcements</span></div>
+      </div>
+    </details>
   `;
 }
 
@@ -470,18 +529,18 @@ function renderModules() {
   }
   for (const module of modules) {
     const block = document.createElement("section");
-    block.className = "module";
+    block.className = "module context_module item-group-condensed";
 
     const header = document.createElement("button");
-    header.className = "module-header";
-    header.textContent = module.name || "Untitled Module";
+    header.className = "module-header ig-header";
+    header.innerHTML = `<span class="ig-header-title">${escapeHtml(module.name || "Untitled Module")}</span>`;
     header.addEventListener("click", () => {
       const list = block.querySelector(".module-items");
       list.hidden = !list.hidden;
     });
 
-    const list = document.createElement("div");
-    list.className = "module-items";
+    const list = document.createElement("ul");
+    list.className = "module-items ig-list item-group-expandable context_module_items";
     for (const item of module.items || []) {
       list.appendChild(renderModuleItem(item));
     }
@@ -493,12 +552,12 @@ function renderModules() {
 
 function renderSyntheticPagesHome() {
   const block = document.createElement("section");
-  block.className = "module";
+  block.className = "module context_module item-group-condensed";
   const header = document.createElement("button");
-  header.className = "module-header";
-  header.textContent = "Pages";
-  const list = document.createElement("div");
-  list.className = "module-items";
+  header.className = "module-header ig-header";
+  header.innerHTML = `<span class="ig-header-title">Pages</span>`;
+  const list = document.createElement("ul");
+  list.className = "module-items ig-list item-group-expandable context_module_items";
   for (const page of state.currentCourse.pages || []) {
     list.appendChild(renderModuleItem({
       title: page.title,
@@ -512,12 +571,12 @@ function renderSyntheticPagesHome() {
 
 function renderSyntheticAssignmentsHome() {
   const block = document.createElement("section");
-  block.className = "module";
+  block.className = "module context_module item-group-condensed";
   const header = document.createElement("button");
-  header.className = "module-header";
-  header.textContent = "Assignments";
-  const list = document.createElement("div");
-  list.className = "module-items";
+  header.className = "module-header ig-header";
+  header.innerHTML = `<span class="ig-header-title">Assignments</span>`;
+  const list = document.createElement("ul");
+  list.className = "module-items ig-list item-group-expandable context_module_items";
   for (const assignment of state.currentCourse.assignments || []) {
     list.appendChild(renderModuleItem({
       title: assignment.name,
@@ -531,8 +590,11 @@ function renderSyntheticAssignmentsHome() {
 }
 
 function renderModuleItem(item) {
+  const li = document.createElement("li");
+  li.className = `context_module_item ${normalizeText(item.type || "item").replace(/[^a-z0-9]+/g, "-")}`;
+
   const row = document.createElement("div");
-  row.className = "item-row";
+  row.className = `item-row ig-row ig-published item-row-${normalizeText(item.type || "item").replace(/[^a-z0-9]+/g, "-")}`;
   row.style.paddingLeft = `${14 + Number(item.indent || 0) * 22}px`;
 
   const symbol = document.createElement("span");
@@ -551,7 +613,8 @@ function renderModuleItem(item) {
   badge.textContent = item.display_only ? "Link" : item.local_path ? "Local" : item.type || "Item";
 
   row.append(symbol, button, badge);
-  return row;
+  li.appendChild(row);
+  return li;
 }
 
 function renderFiles() {
@@ -565,13 +628,249 @@ function renderFiles() {
 }
 
 function renderAnnouncements() {
-  renderSimplePanel(
-    els.panelAnnouncements,
-    state.currentCourse.announcements || [],
-    item => item.title || "Untitled Announcement",
-    item => [formatDate(item.posted_at || item.delayed_post_at), item.user_name].filter(Boolean).join(" | "),
-    previewAnnouncement,
-  );
+  const announcements = state.currentCourse.announcements || [];
+  els.panelAnnouncements.innerHTML = `
+    <section class="announcements-index canvas-index-page">
+      <div class="content-header">
+        <h2>Announcements</h2>
+        <div class="content-header-actions">
+          <label class="canvas-search">
+            <span class="screenreader-only">Search announcements</span>
+            <input type="search" placeholder="Search announcements" data-announcement-search>
+          </label>
+        </div>
+      </div>
+      <div class="discussion-topic-list item-group-condensed">
+        <div class="ig-header announcement-list-header">
+          <span class="ig-header-title">Announcements</span>
+          <span>${announcements.length} total</span>
+        </div>
+        <ul class="ig-list" data-announcement-list>
+          ${announcements.length ? announcements.map(renderAnnouncementRow).join("") : `<li><div class="ig-row ig-row-empty"><span class="ig-empty-msg">No announcements archived</span></div></li>`}
+        </ul>
+      </div>
+    </section>
+  `;
+  bindAnnouncementRows(els.panelAnnouncements, announcements);
+}
+
+function renderAnnouncementRow(item) {
+  const title = item.title || "Untitled Announcement";
+  const posted = formatDate(item.posted_at || item.delayed_post_at);
+  const author = item.user_name || "Course";
+  const excerpt = plainTextPreview(item.message || "", 170);
+  return `
+    <li data-announcement-row data-id="${escapeHtml(item.id ?? title)}">
+      <button type="button" class="discussion-topic-row ig-row">
+        <span class="discussion-icon icon-announcement" aria-hidden="true"></span>
+        <span class="discussion-main">
+          <strong>${escapeHtml(title)}</strong>
+          <span class="discussion-meta">${escapeHtml(author)}${posted ? ` • ${escapeHtml(posted)}` : ""}</span>
+          ${excerpt ? `<span class="discussion-excerpt">${escapeHtml(excerpt)}</span>` : ""}
+        </span>
+        <span class="discussion-status">Unread</span>
+      </button>
+    </li>
+  `;
+}
+
+function bindAnnouncementRows(root, announcements) {
+  const rows = root.querySelectorAll("[data-announcement-row]");
+  rows.forEach(row => {
+    const id = row.dataset.id;
+    const item = announcements.find(candidate => String(candidate.id ?? candidate.title) === String(id));
+    row.querySelector("button")?.addEventListener("click", () => previewAnnouncement(item));
+  });
+  const input = root.querySelector("[data-announcement-search]");
+  const list = root.querySelector("[data-announcement-list]");
+  input?.addEventListener("input", () => {
+    const query = normalizeText(input.value);
+    for (const row of list.querySelectorAll("[data-announcement-row]")) {
+      row.hidden = query && !normalizeText(row.textContent).includes(query);
+    }
+  });
+}
+
+function renderAssignmentIndex(container, items, options = {}) {
+  const normalizedItems = (items || []).filter(Boolean);
+  const groups = groupAssignmentIndexItems(normalizedItems, options);
+  container.innerHTML = `
+    <section class="assignment-index canvas-index-page">
+      <div class="assignment-search-row">
+        <label class="assignment-search">
+          <span class="screenreader-only">Search ${escapeHtml(options.labelPlural || "assignments")}</span>
+          <span class="assignment-search-icon" aria-hidden="true"></span>
+          <input type="search" placeholder="Search..." data-assignment-search>
+        </label>
+      </div>
+      ${normalizedItems.length ? groups.map(group => renderAssignmentIndexGroup(group, options)).join("") : `
+        <div class="empty-course-panel">
+          <h2>${escapeHtml(options.emptyTitle || "Assignments")}</h2>
+          <p>No ${escapeHtml(options.labelPlural || "assignments")} archived for this course yet.</p>
+        </div>
+      `}
+    </section>
+  `;
+  bindAssignmentIndex(container, normalizedItems, options);
+}
+
+function groupAssignmentIndexItems(items, options = {}) {
+  const now = new Date();
+  const undated = [];
+  const upcoming = [];
+  const past = [];
+
+  for (const item of items) {
+    const due = assignmentDueDate(item);
+    if (!due) undated.push(item);
+    else if (due.getTime() >= now.getTime()) upcoming.push(item);
+    else past.push(item);
+  }
+
+  const sortDated = (a, b) => (assignmentDueDate(b)?.getTime() || 0) - (assignmentDueDate(a)?.getTime() || 0);
+  const sortUndated = (a, b) => assignmentTitle(a, options).localeCompare(assignmentTitle(b, options));
+  undated.sort(sortUndated);
+  upcoming.sort((a, b) => (assignmentDueDate(a)?.getTime() || 0) - (assignmentDueDate(b)?.getTime() || 0));
+  past.sort(sortDated);
+
+  const groups = [];
+  if (undated.length) groups.push({ title: "Undated Assignments", items: undated });
+  if (upcoming.length) groups.push({ title: "Upcoming Assignments", items: upcoming });
+  if (past.length) groups.push({ title: "Past Assignments", items: past });
+  if (!groups.length && items.length) groups.push({ title: options.groupTitle || "Assignments", items });
+  return groups;
+}
+
+function renderAssignmentIndexGroup(group, options = {}) {
+  return `
+    <section class="assignment-group" data-assignment-group>
+      <button type="button" class="assignment-group-header" data-assignment-group-toggle aria-expanded="true">
+        <span class="assignment-disclosure" aria-hidden="true"></span>
+        <span>${escapeHtml(group.title)}</span>
+      </button>
+      <ul class="assignment-list">
+        ${group.items.map(item => renderAssignmentIndexRow(item, options)).join("")}
+      </ul>
+    </section>
+  `;
+}
+
+function renderAssignmentIndexRow(item, options = {}) {
+  const id = assignmentIndexId(item, options);
+  const title = assignmentTitle(item, options);
+  const meta = assignmentIndexMeta(item, options);
+  const icon = assignmentIconClass(item, options);
+  return `
+    <li class="assignment-row" data-assignment-row data-id="${escapeHtml(id)}">
+      <button type="button" class="assignment-row-button">
+        <span class="assignment-row-icon ${escapeHtml(icon)}" aria-hidden="true"></span>
+        <span class="assignment-row-main">
+          <strong>${escapeHtml(title)}</strong>
+          ${meta ? `<span class="assignment-row-meta">${meta}</span>` : ""}
+        </span>
+      </button>
+    </li>
+  `;
+}
+
+function bindAssignmentIndex(container, items, options = {}) {
+  const itemById = new Map(items.map(item => [assignmentIndexId(item, options), item]));
+  for (const row of container.querySelectorAll("[data-assignment-row]")) {
+    row.querySelector("button")?.addEventListener("click", () => {
+      const item = itemById.get(row.dataset.id);
+      if (item) (options.click || previewAssignment)(item);
+    });
+  }
+
+  for (const toggle of container.querySelectorAll("[data-assignment-group-toggle]")) {
+    toggle.addEventListener("click", event => {
+      event.stopPropagation();
+      const group = toggle.closest("[data-assignment-group]");
+      const list = group?.querySelector(".assignment-list");
+      const expanded = toggle.getAttribute("aria-expanded") !== "false";
+      toggle.setAttribute("aria-expanded", String(!expanded));
+      if (list) list.hidden = expanded;
+    });
+  }
+
+  const input = container.querySelector("[data-assignment-search]");
+  input?.addEventListener("input", () => {
+    const query = normalizeText(input.value);
+    for (const row of container.querySelectorAll("[data-assignment-row]")) {
+      row.hidden = query && !normalizeText(row.textContent).includes(query);
+    }
+    for (const group of container.querySelectorAll("[data-assignment-group]")) {
+      const visibleRows = Array.from(group.querySelectorAll("[data-assignment-row]")).some(row => !row.hidden);
+      group.hidden = query && !visibleRows;
+    }
+  });
+}
+
+function assignmentIndexId(item, options = {}) {
+  const prefix = options.kind || "assignment";
+  return `${prefix}:${item.id ?? item.quiz_id ?? item.assignment_id ?? assignmentTitle(item, options)}`;
+}
+
+function assignmentTitle(item, options = {}) {
+  return item.name || item.title || options.fallbackTitle || "Untitled Assignment";
+}
+
+function assignmentDueDate(item) {
+  const value = item.due_at || item.lock_at || item.unlock_at;
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function assignmentStatusText(item) {
+  const due = assignmentDueDate(item);
+  const workflow = item.workflow_state || item.published;
+  if (String(workflow).toLowerCase() === "unpublished") return "Unpublished";
+  if (item.locked_for_user) return "Closed";
+  if (due && due.getTime() < Date.now()) return "Closed";
+  if (item.unlock_at && new Date(item.unlock_at).getTime() > Date.now()) return "Not Available";
+  return "Available";
+}
+
+function assignmentIndexMeta(item, options = {}) {
+  const parts = [assignmentStatusText(item)];
+  const due = formatCanvasDueDate(item.due_at);
+  if (due) parts.push(due);
+  const score = assignmentScoreText(item, options);
+  if (score) parts.push(score);
+  if (options.kind === "quiz" && item.question_count) parts.push(`${escapeHtml(item.question_count)} questions`);
+  return parts.map(part => escapeHtml(part)).join(" <span aria-hidden=\"true\">|</span> ");
+}
+
+function assignmentScoreText(item, options = {}) {
+  const grade = findGradeRecordForItem(item);
+  const possible = item.points_possible ?? grade?.points_possible;
+  const rawScore = grade?.submission?.score ?? grade?.submission?.grade;
+  const score = formatNumber(rawScore);
+  const possibleText = formatNumber(possible);
+  if (score && possibleText) return `${score}/${possibleText} pts`;
+  if (possibleText) return `${possibleText} pts`;
+  return "";
+}
+
+function assignmentIconClass(item, options = {}) {
+  const value = `${options.kind || ""} ${item.submission_types || ""} ${item.name || ""} ${item.title || ""}`.toLowerCase();
+  if (value.includes("quiz") || value.includes("online_quiz")) return "icon-rocket";
+  return "icon-assignment-document";
+}
+
+function findGradeRecordForItem(item) {
+  const groups = state.currentCourse?.grades?.groups || [];
+  const id = item.assignment_id ?? item.id;
+  for (const group of groups) {
+    const match = (group.assignments || []).find(candidate => {
+      return String(candidate.id) === String(id)
+        || String(candidate.assignment_id) === String(id)
+        || normalizeText(candidate.name) === normalizeText(item.name || item.title);
+    });
+    if (match) return match;
+  }
+  return null;
 }
 
 function renderPages() {
@@ -585,23 +884,22 @@ function renderPages() {
 }
 
 function renderAssignments() {
-  renderSimplePanel(
-    els.panelAssignments,
-    state.currentCourse.assignments || [],
-    item => item.name || "Untitled Assignment",
-    item => [formatDate(item.due_at), item.points_possible ? `${item.points_possible} pts` : ""].filter(Boolean).join(" | "),
-    previewAssignment,
-  );
+  renderAssignmentIndex(els.panelAssignments, state.currentCourse.assignments || [], {
+    kind: "assignment",
+    labelPlural: "assignments",
+    emptyTitle: "Assignments",
+    click: previewAssignment,
+  });
 }
 
 function renderQuizzes() {
-  renderSimplePanel(
-    els.panelQuizzes,
-    state.currentCourse.quizzes || [],
-    item => item.title || "Untitled Quiz",
-    item => [formatDate(item.due_at), item.points_possible !== null && item.points_possible !== undefined ? `${item.points_possible} pts` : "", item.question_count ? `${item.question_count} questions` : ""].filter(Boolean).join(" | "),
-    previewQuiz,
-  );
+  renderAssignmentIndex(els.panelQuizzes, state.currentCourse.quizzes || [], {
+    kind: "quiz",
+    labelPlural: "quizzes",
+    emptyTitle: "Quizzes",
+    fallbackTitle: "Untitled Quiz",
+    click: previewQuiz,
+  });
 }
 
 function renderDiscussions() {
@@ -618,17 +916,170 @@ function renderGrades() {
   const grades = state.currentCourse.grades || {};
   const groups = grades.groups || [];
   const summary = grades.summary || {};
+  const rows = groups
+    .flatMap(group => (group.assignments || []).map(item => ({ ...item, group_name: group.name || "Assignments" })))
+    .sort(compareGradeRowsByDueDate);
+  const courseLabel = state.currentCourse.course_code || state.currentCourse.name || "Course";
   els.panelGrades.innerHTML = `
-    <section class="grades-panel">
-      <div class="grades-summary">
-        <div><span>Total</span><strong>${formatGradePercent(summary.percent ?? summary.current_score ?? summary.final_score)}</strong></div>
-        <div><span>Points</span><strong>${formatPoints(summary.earned_points, summary.possible_points)}</strong></div>
-        <div><span>Graded</span><strong>${escapeHtml(summary.graded_count ?? 0)} / ${escapeHtml(summary.assignment_count ?? 0)}</strong></div>
+    <section class="grades-panel canvas-index-page">
+      <div class="content-header grades-header">
+        <h2>Grades</h2>
+        <div class="content-header-actions">
+          <button class="Button print-grades-button" type="button"><span class="print-icon" aria-hidden="true"></span> Print Grades</button>
+        </div>
+      </div>
+      <div class="grades-controls">
+        <div class="grade-control">
+          <label for="gradeCourseSelect">Course</label>
+          <select id="gradeCourseSelect">
+            <option>${escapeHtml(courseLabel)}</option>
+          </select>
+        </div>
+        <div class="grade-control grade-arrange-control">
+          <label for="gradeArrangeSelect">Arrange By</label>
+          <select id="gradeArrangeSelect">
+            <option>Due Date</option>
+            <option>Assignment Group</option>
+            <option>Module</option>
+          </select>
+        </div>
+        <button class="Button grade-apply-button" type="button">Apply</button>
       </div>
       ${grades.warning ? `<p class="grade-warning">${escapeHtml(grades.warning)}</p>` : ""}
-      ${groups.length ? groups.map(renderGradeGroup).join("") : `<div class="empty-course-panel"><h2>Grades</h2><p>No grade items archived for this course yet. Re-run metadata sync for this course.</p></div>`}
+      <div class="student-grades-layout">
+        <div class="student-grades-main">
+          ${rows.length ? renderStudentGradesTable(rows) : `<div class="empty-course-panel"><h2>Grades</h2><p>No grade items archived for this course yet. Re-run metadata sync for this course.</p></div>`}
+        </div>
+        <aside class="student-grades-summary">
+          <h3>Total</h3>
+          <strong>${formatGradePercent(summary.percent ?? summary.current_score ?? summary.final_score)}</strong>
+          <span>${formatPoints(summary.earned_points, summary.possible_points)}</span>
+          <dl>
+            <div><dt>Graded</dt><dd>${escapeHtml(summary.graded_count ?? 0)} / ${escapeHtml(summary.assignment_count ?? 0)}</dd></div>
+            <div><dt>Groups</dt><dd>${escapeHtml(groups.length)}</dd></div>
+          </dl>
+        </aside>
+      </div>
     </section>
   `;
+  bindGradeRows(els.panelGrades, rows);
+}
+
+function renderStudentGradesTable(rows) {
+  return `
+    <table class="student-grades-table">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Due</th>
+          <th scope="col">Submitted</th>
+          <th scope="col">Status</th>
+          <th scope="col">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(renderStudentGradeRow).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderStudentGradeRow(item) {
+  const submission = item.submission || {};
+  const score = formatGradeScore(submission.grade ?? submission.score, item.points_possible);
+  const possible = formatNumber(item.points_possible) || "-";
+  const status = gradeStatusText(item, submission);
+  const showDot = submission.score !== null && submission.score !== undefined && possible !== "-";
+  return `
+    <tr>
+      <td>
+        <button type="button" class="grade-item-link" data-assignment-id="${escapeHtml(item.id ?? "")}">${escapeHtml(item.name || "Untitled")}</button>
+        <span>${escapeHtml(item.group_name || "")}</span>
+      </td>
+      <td>${escapeHtml(formatGradeDueDate(item.due_at) || "-")}</td>
+      <td>${escapeHtml(formatGradeSubmittedDate(submission.submitted_at) || "-")}</td>
+      <td>${escapeHtml(status || "")}</td>
+      <td class="score-cell">${escapeHtml(score || "-")}${showDot ? `<span class="score-dot" aria-hidden="true"></span>` : ""}</td>
+    </tr>
+  `;
+}
+
+function compareGradeRowsByDueDate(a, b) {
+  const aDue = assignmentDueDate(a)?.getTime();
+  const bDue = assignmentDueDate(b)?.getTime();
+  if (aDue && bDue) return aDue - bDue;
+  if (aDue) return -1;
+  if (bDue) return 1;
+  return (a.position ?? 0) - (b.position ?? 0) || String(a.name || "").localeCompare(String(b.name || ""));
+}
+
+function gradeStatusText(item, submission = {}) {
+  if (submission.excused) return "Excused";
+  if (submission.missing) return "Missing";
+  if (submission.late) return "Late";
+  if (item.status && !/^graded$/i.test(item.status)) return item.status;
+  if (submission.workflow_state === "graded") return "Graded";
+  if (submission.workflow_state === "submitted") return "Submitted";
+  return item.status || "";
+}
+
+function formatGradeScore(scoreValue, possibleValue) {
+  const score = formatNumber(scoreValue);
+  const possible = formatNumber(possibleValue);
+  if (score && possible) return `${score} / ${possible}`;
+  return score || "";
+}
+
+function formatGradeDueDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${formatMonthDayYear(date)} by ${formatCanvasTime(date, true)}`;
+}
+
+function formatGradeSubmittedDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${formatMonthDayYear(date)} at ${formatCanvasTime(date, true)}`;
+}
+
+function formatCanvasDueDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `Due ${formatMonthDay(date)} at ${formatCanvasTime(date)}`;
+}
+
+function formatMonthDay(date) {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function formatMonthDayYear(date) {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatCanvasTime(date, punctuated = false) {
+  const pieces = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s/g, "").toLowerCase();
+  if (!punctuated) return pieces;
+  return pieces.replace("am", "a.m.").replace("pm", "p.m.");
+}
+
+function bindGradeRows(root, rows) {
+  for (const button of root.querySelectorAll("[data-assignment-id]")) {
+    button.addEventListener("click", () => {
+      const id = button.dataset.assignmentId;
+      const gradeItem = rows.find(item => String(item.id) === String(id));
+      const assignment = (state.currentCourse.assignments || []).find(item => String(item.id) === String(id));
+      if (assignment) previewAssignment(assignment);
+      else if (gradeItem) openItemDetail({
+        title: gradeItem.name || "Assignment",
+        type: "Assignment",
+        url: gradeItem.html_url || "",
+        meta: "This grade item was archived from the Grades endpoint.",
+      });
+    });
+  }
 }
 
 function renderGradeGroup(group) {
@@ -675,7 +1126,7 @@ function renderSimplePanel(container, items, titleFn, metaFn, clickFn) {
 
   for (const item of items) {
     const row = document.createElement("div");
-    row.className = "table-row";
+    row.className = "table-row ic-item-row ig-row";
     const button = document.createElement("button");
     button.innerHTML = `
       <strong>${escapeHtml(titleFn(item))}</strong>
@@ -784,6 +1235,7 @@ function previewPage(page) {
 
 function openPageDetail(page, options = {}) {
   const title = page.title || "Page";
+  setImmersiveReaderVisible(true);
   setCourseLocation({
     kind: "page",
     key: pageKey(page),
@@ -1309,6 +1761,14 @@ function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+function plainTextPreview(html, maxLength = 160) {
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = html || "";
+  const text = (wrapper.textContent || "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}...`;
+}
+
 function bodyStartsWithTitle(html, title) {
   const wrapper = document.createElement("div");
   wrapper.innerHTML = html || "";
@@ -1409,11 +1869,11 @@ function showDownloadCommandPanel() {
 function previewAnnouncement(item) {
   if (!item) return;
   const title = item.title || "Announcement";
+  setImmersiveReaderVisible(true);
   setCourseLocation({ kind: "announcement", id: item.id });
-  clearCourseNavActive();
+  setCourseNavActive("announcements");
   const posted = formatDate(item.posted_at || item.delayed_post_at);
-  const author = item.user_name ? `<div class="announcement-meta">${escapeHtml(item.user_name)}</div>` : "";
-  const date = posted ? `<div class="announcement-meta">${escapeHtml(posted)}</div>` : "";
+  const author = item.user_name || "Course";
   const message = item.message || "<p>No message archived.</p>";
   hideCoursePanels();
   els.courseView.classList.add("detail-open");
@@ -1422,10 +1882,18 @@ function previewAnnouncement(item) {
   els.panelPageDetail.hidden = false;
   els.pageTitle.textContent = `${state.currentCourse.course_code || state.currentCourse.name || ""} > Announcements > ${title}`;
   els.panelPageDetail.innerHTML = `
-    <article class="announcement-preview">
-      <h2>${escapeHtml(title)}</h2>
-      ${author}${date}
-      <div class="canvas-html-body">${prepareCanvasHtml(message)}</div>
+    <article class="announcement-detail">
+      <header class="discussion-detail-header">
+        <h2>${escapeHtml(title)}</h2>
+        <div class="discussion-author-row">
+          <span class="avatar-circle">${escapeHtml(author.slice(0, 1).toUpperCase())}</span>
+          <div>
+            <strong>${escapeHtml(author)}</strong>
+            ${posted ? `<div class="announcement-meta">${escapeHtml(posted)}</div>` : ""}
+          </div>
+        </div>
+      </header>
+      <div class="discussion-entry canvas-html-body">${prepareCanvasHtml(message)}</div>
     </article>
   `;
   bindCanvasHtmlLinks(els.panelPageDetail, item.linked_files || []);
@@ -1435,6 +1903,7 @@ function previewAnnouncement(item) {
 function previewAssignment(item) {
   if (!item) return;
   const title = item.name || "Assignment";
+  setImmersiveReaderVisible(false);
   setCourseLocation({ kind: "assignment", id: item.id });
   clearCourseNavActive();
   const meta = [
@@ -1466,6 +1935,7 @@ function previewAssignment(item) {
 function previewQuiz(item) {
   if (!item) return;
   const title = item.title || "Quiz";
+  setImmersiveReaderVisible(false);
   setCourseLocation({ kind: "quiz", id: item.id });
   clearCourseNavActive();
   const meta = [
@@ -1603,6 +2073,7 @@ function showSyllabusPanel(activeNav = "syllabus") {
 }
 
 function renderArchivedHtmlPanel(entry, options = {}) {
+  setImmersiveReaderVisible(true);
   const title = entry.title || options.titleSuffix || "Page";
   const section = options.section || "Page";
   hideCoursePanels();
@@ -1634,10 +2105,10 @@ function activatePanel(name, activeNav = name, titleOverride = null) {
   if (name === "grades") renderGrades();
   if (name === "quizzes") renderQuizzes();
   if (name === "discussions") renderDiscussions();
+  setImmersiveReaderVisible(["home", "pages", "announcements"].includes(name));
   setCourseNavActive(activeNav);
   els.courseView.classList.remove("detail-open");
-  if (name === "grades") els.courseView.classList.remove("no-right");
-  else els.courseView.classList.add("no-right");
+  els.courseView.classList.add("no-right");
   setCourseActionsVisible(name === "modules");
   els.pageTitle.textContent = `${state.currentCourse.course_code || state.currentCourse.name || state.currentCourse.id} > ${titleOverride || panelTitle(name)}`;
   hideCoursePanels();
@@ -1682,6 +2153,7 @@ function showGlobalTool(tool) {
   els.emptyView.hidden = false;
   els.emptyView.hidden = true;
   els.backButton.hidden = true;
+  setCourseChromeVisible(false);
   setTopDownloadVisible(false);
   const title = globalToolTitle(tool);
   els.pageTitle.textContent = title;
@@ -1855,7 +2327,7 @@ function showCourseUtilityPanel(key, label) {
   clearCourseNavActive();
   hideCoursePanels();
   els.courseView.classList.remove("detail-open");
-  els.courseView.classList.add("no-right");
+  els.courseView.classList.remove("no-right");
   setCourseActionsVisible(false);
   els.panelPageDetail.hidden = false;
   els.pageTitle.textContent = `${state.currentCourse.course_code || state.currentCourse.name || state.currentCourse.id} > ${label}`;
@@ -1949,6 +2421,34 @@ function resetCourseNavigation() {
 
 function setTopDownloadVisible(visible) {
   if (els.downloadCourseTop) els.downloadCourseTop.hidden = !visible;
+}
+
+function setCourseChromeVisible(visible) {
+  if (els.courseNavToggle) els.courseNavToggle.hidden = !visible;
+  setImmersiveReaderVisible(visible);
+}
+
+function setImmersiveReaderVisible(visible) {
+  if (els.immersiveReaderButton) els.immersiveReaderButton.hidden = !visible;
+}
+
+function toggleGlobalNav() {
+  state.globalNavCollapsed = !state.globalNavCollapsed;
+  document.querySelector(".app-shell")?.classList.toggle("global-nav-collapsed", state.globalNavCollapsed);
+  if (els.globalNavToggle) {
+    els.globalNavToggle.setAttribute("aria-pressed", String(state.globalNavCollapsed));
+    els.globalNavToggle.setAttribute("aria-label", state.globalNavCollapsed ? "Expand global navigation" : "Collapse global navigation");
+    els.globalNavToggle.title = state.globalNavCollapsed ? "Expand global navigation" : "Collapse global navigation";
+  }
+}
+
+function toggleCourseNav() {
+  if (!state.currentCourse) return;
+  state.courseNavCollapsed = !state.courseNavCollapsed;
+  els.courseView.classList.toggle("course-nav-collapsed", state.courseNavCollapsed);
+  if (els.courseNavToggle) {
+    els.courseNavToggle.setAttribute("aria-pressed", String(state.courseNavCollapsed));
+  }
 }
 
 function setCourseLocation(location) {
@@ -2179,6 +2679,18 @@ function escapeHtml(value) {
 }
 
 els.backButton.addEventListener("click", goBack);
+if (els.globalNavToggle) {
+  els.globalNavToggle.addEventListener("click", toggleGlobalNav);
+}
+if (els.courseNavToggle) {
+  els.courseNavToggle.addEventListener("click", toggleCourseNav);
+}
+if (els.immersiveReaderButton) {
+  els.immersiveReaderButton.addEventListener("click", () => {
+    const content = document.querySelector("#panelPageDetail:not([hidden]), #panelAnnouncements:not([hidden]), #panelAssignments:not([hidden]), #panelGrades:not([hidden]), #panelModules:not([hidden])");
+    if (content) content.classList.toggle("immersive-reader-mode");
+  });
+}
 document.querySelector('[data-global="dashboard"]').addEventListener("click", renderDashboard);
 for (const button of document.querySelectorAll('[data-global="courses"]')) {
   button.addEventListener("click", renderCoursesPage);

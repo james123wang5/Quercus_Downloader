@@ -95,6 +95,18 @@ Sync all courses visible to your account:
 python3 sync_quercus.py
 ```
 
+Sync faster with parallel course workers:
+
+```bash
+python3 sync_quercus.py --workers 4
+```
+
+Use fully serial sync if your Canvas instance rate-limits aggressively:
+
+```bash
+python3 sync_quercus.py --workers 1
+```
+
 Sync only one course:
 
 ```bash
@@ -217,4 +229,3 @@ python3 backend.py
 ```text
 http://127.0.0.1:8765
 ```
-
