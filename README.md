@@ -26,7 +26,7 @@ python3 sync_quercus.py
 python3 backend.py
 ```
 
-The command above downloads the course list, navigation, pages, assignments, announcements, grades, and other metadata. It does not download every course file.
+The command above syncs course navigation, pages, assignments, announcements, grades, and other metadata. It does not download every course file, but it is still not a fast "list courses only" command: it visits each accessible course and fetches course details.
 
 To also download files, run:
 
@@ -44,10 +44,30 @@ http://127.0.0.1:8765
 
 ## Commands
 
-Sync the course list, course navigation, pages, assignments, announcements, grades, and other metadata without downloading every file:
+Sync course navigation, pages, assignments, announcements, grades, and other metadata without downloading every file:
 
 ```bash
 python3 sync_quercus.py
+```
+
+This is metadata-only, not file-download mode. It can still take time because it checks each accessible course.
+
+Quick test with only the first few courses:
+
+```bash
+python3 sync_quercus.py --limit 3
+```
+
+Sync only one course when you already know the Canvas course ID:
+
+```bash
+python3 sync_quercus.py --course-id 123456
+```
+
+Use more course workers if the Canvas server and your network are stable:
+
+```bash
+python3 sync_quercus.py --workers 4
 ```
 
 Download files for all accessible courses:
@@ -167,7 +187,7 @@ python3 sync_quercus.py
 python3 backend.py
 ```
 
-上面的命令只会拉取课程列表、课程导航、页面、作业、公告、成绩和其他元数据，不会下载所有课程文件。
+上面的命令会同步课程导航、页面、作业、公告、成绩和其他元数据，不会下载所有课程文件。但它不是“只快速列出课程”的命令：它仍然会逐门访问你账号可见的课程并抓取课程详情，所以课程多时会比较慢。
 
 如果要同时下载课程文件，再运行：
 
@@ -185,10 +205,30 @@ http://127.0.0.1:8765
 
 ## 常用命令
 
-只拉取课程列表、课程导航、页面、作业、公告、成绩和其他元数据，不下载所有文件：
+同步课程导航、页面、作业、公告、成绩和其他元数据，不下载所有文件：
 
 ```bash
 python3 sync_quercus.py
+```
+
+这是 metadata-only 模式，不是文件下载模式。但它仍然会检查每门可访问课程，所以不是快速列表模式。
+
+只测试前几门课程：
+
+```bash
+python3 sync_quercus.py --limit 3
+```
+
+已知 Canvas course ID 时，只同步一门课：
+
+```bash
+python3 sync_quercus.py --course-id 123456
+```
+
+网络和 Canvas 服务器稳定时，可以增加课程并发：
+
+```bash
+python3 sync_quercus.py --workers 4
 ```
 
 下载所有可访问课程的文件：
