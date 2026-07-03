@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import http.client
 import mimetypes
 import os
 import re
@@ -156,31 +157,45 @@ class CanvasClient:
 
     def download_url(self, url: str, dest: Path, authenticated: bool = True) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            opener = self.request(url, accept="*/*") if authenticated else self.public_request(url)
-            with opener as resp:
-                content_type = resp.headers.get("Content-Type", "").split(";")[0]
-                suffix = mimetypes.guess_extension(content_type) or ""
-                final_dest = dest
-                if not final_dest.suffix and suffix:
-                    final_dest = final_dest.with_suffix(suffix)
-                final_dest = unique_path(final_dest)
-                partial_dest = final_dest.with_name(f"{final_dest.name}.part")
-                if partial_dest.exists():
-                    partial_dest.unlink()
-                with partial_dest.open("wb") as out:
-                    while True:
-                        chunk = resp.read(1024 * 1024)
-                        if not chunk:
-                            break
-                        out.write(chunk)
-                partial_dest.replace(final_dest)
-            return final_dest
-        except ApiError:
-            raise
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
-            detail = getattr(exc, "reason", None) or str(exc)
-            raise ApiError(0, url, f"Download interrupted: {detail}") from exc
+        last_error: BaseException | None = None
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                opener = self.request(url, accept="*/*") if authenticated else self.public_request(url)
+                with opener as resp:
+                    content_type = resp.headers.get("Content-Type", "").split(";")[0]
+                    content_length = resp.headers.get("Content-Length")
+                    expected_bytes = int(content_length) if content_length and content_length.isdigit() else None
+                    suffix = mimetypes.guess_extension(content_type) or ""
+                    final_dest = dest
+                    if not final_dest.suffix and suffix:
+                        final_dest = final_dest.with_suffix(suffix)
+                    final_dest = unique_path(final_dest)
+                    partial_dest = final_dest.with_name(f"{final_dest.name}.part")
+                    if partial_dest.exists():
+                        partial_dest.unlink()
+                    written = 0
+                    with partial_dest.open("wb") as out:
+                        while True:
+                            chunk = resp.read(1024 * 1024)
+                            if not chunk:
+                                break
+                            out.write(chunk)
+                            written += len(chunk)
+                    if expected_bytes is not None and written != expected_bytes:
+                        raise OSError(f"Incomplete download: expected {expected_bytes} bytes, received {written}")
+                    partial_dest.replace(final_dest)
+                return final_dest
+            except ApiError as exc:
+                if exc.code != 0:
+                    raise
+                last_error = exc
+            except (http.client.HTTPException, urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+                last_error = exc
+            if attempt < self.max_retries:
+                time.sleep(1.5 * attempt)
+
+        detail = getattr(last_error, "reason", None) or str(last_error)
+        raise ApiError(0, url, f"Download interrupted after {self.max_retries} attempts: {detail}") from last_error
 
     def public_request(self, url: str) -> urllib.response.addinfourl:
         req = urllib.request.Request(

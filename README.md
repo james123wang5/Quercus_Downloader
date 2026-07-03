@@ -1,160 +1,28 @@
-# Quercus / Canvas Download
+# Quercus & Canvas Course Downloader
 
-## Quercus 课程资料下载器 / 本地 Canvas 课程归档工具
+Download University of Toronto Quercus and Canvas LMS courses, then browse them locally with a Canvas-style interface.
 
-一个用于把 Quercus / Canvas 课程内容同步到本地电脑的工具。它会读取你自己的 Canvas access token，获取你账号可见的课程、课程栏目、Modules、Pages、Assignments、Announcements、Files、Grades 等结构，并生成一个本地可浏览的 Quercus / Canvas 风格网页。
-
-> This is an unofficial local archive tool for Quercus / Canvas. It is not affiliated with, endorsed by, or maintained by Instructure, Canvas, Quercus, or the University of Toronto.
-
-## What This Repository Contains
-
-This repository contains only the program code:
-
-- Python sync scripts
-- A local Python web server
-- A browser UI for viewing the local archive
-- Dependency and configuration examples
-
-This repository does **not** include downloaded course files, personal tokens, local logs, or private course data.
-
-Ignored local-only folders/files include:
-
-- `archive/`
-- `config/`
-- `logs/`
-- `quercus_probe_output/`
-- `.env`
+> This is an unofficial personal backup tool. It is not affiliated with Instructure, Canvas, Quercus, or the University of Toronto.
 
 ## Features
 
-- Sync all courses visible to your Canvas / Quercus account.
-- Sync a single course by Canvas course ID.
-- Preserve dynamic course navigation based on each user's real course tabs.
-- Archive course metadata and structure:
-  - Modules
-  - Pages
-  - Announcements
-  - Assignments
-  - Quizzes metadata
-  - Discussions metadata
-  - Grades summary
-  - Files metadata
-  - Course tabs and external tool entries
-- Optionally download linked files such as PDF, PPTX, DOCX, ZIP, images, and other course materials.
-- Browse the result in a local Quercus / Canvas style web UI.
-- Re-run safely: already downloaded files are skipped when possible.
+- Sync active and completed courses available to your account
+- Archive Modules, Pages, Announcements, Assignments, Grades, Quizzes, Discussions, and course navigation
+- Download PDFs, presentations, documents, ZIP files, source code, images, and other attachments
+- Discover Canvas files embedded in pages, announcements, assignments, quizzes, and discussions
+- Skip completed downloads and retry missing files
+- Browse downloaded courses through a local Quercus / Canvas-style web interface
+- Preserve links to external tools and video platforms
 
-## Requirements
+## Quick Start
 
-- Python 3.10+
-- A valid Canvas / Quercus access token
-- Network access to your Canvas / Quercus instance
-
-Install dependencies:
+Requires Python 3.10 or newer.
 
 ```bash
-pip3 install -r requirements.txt
-```
-
-## Get a Canvas / Quercus Token
-
-This tool does not ask for or store your password. It uses a Canvas access token.
-
-For Quercus, the default base URL is:
-
-```text
-https://q.utoronto.ca
-```
-
-Generate a token from your Canvas / Quercus account settings, then save it locally:
-
-```bash
+git clone https://github.com/james123wang5/QuercusCanvasDownloader.git
+cd QuercusCanvasDownloader
 python3 save_token.py
-```
-
-The script writes your token to:
-
-```text
-config/local.json
-```
-
-`config/` is ignored by git. Do not share this file.
-
-You can also use environment variables instead:
-
-```bash
-export QUERCUS_BASE_URL="https://q.utoronto.ca"
-export QUERCUS_TOKEN="paste-your-token-here"
-```
-
-## Sync Course Structure
-
-Sync all courses visible to your account:
-
-```bash
-python3 sync_quercus.py
-```
-
-Sync faster with parallel course workers:
-
-```bash
-python3 sync_quercus.py --workers 4
-```
-
-Use fully serial sync if your Canvas instance rate-limits aggressively:
-
-```bash
-python3 sync_quercus.py --workers 1
-```
-
-Sync only one course:
-
-```bash
-python3 sync_quercus.py --course-id 123456
-```
-
-Limit the number of courses for testing:
-
-```bash
-python3 sync_quercus.py --limit 3
-```
-
-By default, this syncs course structure and metadata but does not download all files.
-
-## Download Course Files
-
-Download files for all synced/visible courses:
-
-```bash
-python3 sync_quercus.py --download-files
-```
-
-Download files for one course:
-
-```bash
-python3 sync_quercus.py --course-id 123456 --download-files
-```
-
-Save a download log locally:
-
-```bash
-mkdir -p logs
-python3 sync_quercus.py --download-files 2>&1 | tee "logs/download-all-$(date +%Y%m%d-%H%M%S).log"
-```
-
-Downloaded files are stored under:
-
-```text
-archive/courses/<course-id-course-name>/files/
-```
-
-`archive/` is ignored by git because it contains private course data.
-
-## Open the Local Web UI
-
-Start the local server:
-
-```bash
+python3 sync_quercus.py --download-files --workers 1
 python3 backend.py
 ```
 
@@ -164,68 +32,230 @@ Open:
 http://127.0.0.1:8765
 ```
 
-Use a different port if needed:
+`save_token.py` stores the token locally in `config/local.json`. This directory is ignored by Git.
+
+## Commands
+
+Sync course metadata and pages without downloading every file:
 
 ```bash
-python3 backend.py --port 8766
+python3 sync_quercus.py
 ```
 
-The UI reads only local files from this project folder. It does not upload your token or course files to any remote server.
-
-## Typical Workflow on a New Computer
+Download all accessible courses:
 
 ```bash
-git clone https://github.com/<your-username>/quercus-canvas-download.git
-cd quercus-canvas-download
-pip3 install -r requirements.txt
+python3 sync_quercus.py --download-files --workers 1
+```
+
+Download one course:
+
+```bash
+python3 sync_quercus.py --course-id 123456 --download-files
+```
+
+Save a download log:
+
+```bash
+mkdir -p logs
+PYTHONUNBUFFERED=1 python3 sync_quercus.py \
+  --download-files \
+  --workers 1 \
+  2>&1 | tee "logs/download-$(date +%Y%m%d-%H%M%S).log"
+```
+
+Use more workers when the network and Canvas instance are stable:
+
+```bash
+python3 sync_quercus.py --download-files --workers 4
+```
+
+## Local Data
+
+Downloaded content is stored under:
+
+```text
+archive/courses/<course-id-course-name>/
+```
+
+The following local data is excluded from Git:
+
+```text
+archive/
+config/
+logs/
+.env
+```
+
+The public repository contains program code only. It does not include personal tokens, downloaded courses, grades, or local logs.
+
+## Supported Content
+
+The downloader can store:
+
+- Course navigation, Modules, and course structure
+- Pages, syllabi, and front pages
+- Announcement and discussion topic content
+- Assignment descriptions, rubrics, and grade information
+- Quiz metadata and descriptions
+- Canvas files and attachments discovered in course content
+
+Some content can only be preserved as links or partial metadata:
+
+- Piazza, MarkUs, Crowdmark, Gradescope, and other third-party tools
+- YouTube, Zoom, U of T Play, Panopto, SharePoint, and other video services
+- Quiz attempts and complete interactive quiz pages
+- Complete discussion reply threads
+- Deleted, expired, or permission-restricted content
+
+The tool does not bypass Canvas permissions. It can only download content available to the configured token.
+
+## Project Structure
+
+```text
+sync_quercus.py   Course sync and file discovery
+canvas_client.py  Canvas API client and file downloader
+save_token.py     Local token configuration
+backend.py        Local web server
+web/              Local course browser
+```
+
+## Privacy and Usage
+
+- Never publish your Canvas token.
+- Do not commit `archive/`, `config/`, `logs/`, or `.env`.
+- Course materials may be protected by copyright or course policies. Use this tool for personal backups.
+- Review `git status` before publishing changes.
+
+---
+
+# 中文说明
+
+## Quercus / Canvas 课程下载器
+
+把 Canvas LMS / U of T Quercus 课程下载到本地，并通过接近原课程网站的网页界面离线浏览。
+
+> 非官方个人备份工具，与 Instructure、Canvas、Quercus 或 University of Toronto 无隶属关系。
+
+## 功能
+
+- 同步当前账号可访问的 active 和 completed 课程
+- 保存 Modules、Pages、Announcements、Assignments、Grades、Quizzes、Discussions 和课程导航
+- 下载 PDF、PPTX、DOCX、ZIP、代码、图片等课程文件
+- 自动发现页面、公告和作业正文中的 Canvas 文件链接
+- 已下载文件自动跳过，失败文件可以重新运行补下
+- 本地 Quercus / Canvas 风格网页界面
+- 记录外部工具和视频平台入口
+
+## 快速开始
+
+要求 Python 3.10 或更高版本。
+
+```bash
+git clone https://github.com/james123wang5/QuercusCanvasDownloader.git
+cd QuercusCanvasDownloader
 python3 save_token.py
-python3 sync_quercus.py
-python3 sync_quercus.py --download-files
+python3 sync_quercus.py --download-files --workers 1
 python3 backend.py
 ```
 
-Then open:
+浏览器打开：
 
 ```text
 http://127.0.0.1:8765
 ```
 
-## Privacy and Usage Notes
+`save_token.py` 会把 token 保存在本机的 `config/local.json`。该目录已被 Git 忽略。
 
-- Keep your token private.
-- Do not commit `config/`, `.env`, `archive/`, or `logs/`.
-- Downloaded course materials may be copyrighted or restricted by course policy.
-- This tool is intended for personal local backup of courses you can access.
-- External tools such as Piazza, MarkUs, Gradescope, video platforms, and third-party interactive content may only be preserved as links or local records.
+## 常用命令
 
-## Main Files
-
-```text
-backend.py          Local web server for browsing the archive
-sync_quercus.py     Main Canvas / Quercus sync and download script
-canvas_client.py    Canvas API client
-save_token.py       Local token setup helper
-probe_quercus.py    Optional API capability probe
-web/                Local Quercus / Canvas style UI
-requirements.txt    Python dependencies
-```
-
-## 中文快速说明
-
-这是一个 Quercus / Canvas 课程资料本地下载和归档工具。别人拉取这个 GitHub 仓库后，不会拿到你的课程资料，也不会拿到你的 token。他们需要在自己的电脑上输入自己的 token，然后同步和下载他们自己账号能看到的课程。
-
-最常用命令：
+只同步课程结构和页面：
 
 ```bash
-pip3 install -r requirements.txt
-python3 save_token.py
 python3 sync_quercus.py
-python3 sync_quercus.py --download-files
-python3 backend.py
 ```
 
-打开：
+下载所有可访问课程：
+
+```bash
+python3 sync_quercus.py --download-files --workers 1
+```
+
+只下载一门课程：
+
+```bash
+python3 sync_quercus.py --course-id 123456 --download-files
+```
+
+保存运行日志：
+
+```bash
+mkdir -p logs
+PYTHONUNBUFFERED=1 python3 sync_quercus.py \
+  --download-files \
+  --workers 1 \
+  2>&1 | tee "logs/download-$(date +%Y%m%d-%H%M%S).log"
+```
+
+网络稳定时可以提高并发数：
+
+```bash
+python3 sync_quercus.py --download-files --workers 4
+```
+
+## 本地数据
+
+下载内容保存在：
 
 ```text
-http://127.0.0.1:8765
+archive/courses/<course-id-course-name>/
 ```
+
+以下本地数据不会提交到 GitHub：
+
+```text
+archive/
+config/
+logs/
+.env
+```
+
+公开仓库只包含程序代码，不包含个人 token、课程文件、成绩或日志。
+
+## 支持的内容
+
+可以保存：
+
+- 课程导航、Modules 和课程结构
+- Pages、Syllabus 和 Front Page
+- Announcements 和 Discussion 主题正文
+- Assignments 描述、rubric 和成绩信息
+- Quiz 基本信息和描述
+- Canvas 文件及课程正文中的附件
+
+只能保留链接或部分信息：
+
+- Piazza、MarkUs、Crowdmark、Gradescope 等第三方工具
+- YouTube、Zoom、U of T Play、Panopto、SharePoint 等视频
+- Quiz 作答记录和完整交互页面
+- Discussion 完整回复线程
+- 已删除、已过期或当前账号无权访问的内容
+
+工具不会绕过 Canvas 权限，只能下载当前 token 可以访问的内容。
+
+## 项目结构
+
+```text
+sync_quercus.py   课程同步与文件发现
+canvas_client.py  Canvas API 和文件下载
+save_token.py     本地 token 配置
+backend.py        本地网页服务器
+web/              本地课程浏览界面
+```
+
+## 隐私与使用
+
+- 不要公开分享 Canvas token。
+- 不要提交 `archive/`、`config/`、`logs/` 或 `.env`。
+- 课程资料可能受版权或课程政策限制，仅用于个人备份。
+- 公开修改前请检查 `git status`。

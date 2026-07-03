@@ -293,7 +293,7 @@ def extract_canvas_page_urls_from_html(html: str, course_id: int) -> list[str]:
 
 
 def first_file_id(value: str) -> int | None:
-    for pattern in (r"/files/(\d+)", r"files%2F(\d+)"):
+    for pattern in (r"/files/(\d+)(?=[/?#]|$)", r"files%2F(\d+)(?=[%/?#&]|$)"):
         match = re.search(pattern, value)
         if match:
             return int(match.group(1))
@@ -478,12 +478,24 @@ def archive_course(
                 is_canvas_document = looks_like_document(urllib.parse.urlparse(source_url).path)
                 if not is_external and not is_canvas_document:
                     continue
+                filename = file_name_from_link({**link, "href": source_url})
+                if (
+                    not is_external
+                    and first_file_id(source_url) is None
+                    and any(
+                        isinstance(existing_id, int)
+                        and str(existing.get("display_name") or existing.get("filename") or "").casefold()
+                        == filename.casefold()
+                        for existing_id, existing in file_entries.items()
+                    )
+                ):
+                    continue
                 key = external_file_key(source_url)
                 if key not in file_entries:
                     file_entries[key] = {
                         "id": key,
-                        "display_name": link.get("title") or file_name_from_link({**link, "href": source_url}),
-                        "filename": file_name_from_link({**link, "href": source_url}),
+                        "display_name": link.get("title") or filename,
+                        "filename": filename,
                         "html_url": source_url,
                         "url": source_url,
                         "external_url": source_url if is_external else None,
@@ -1351,6 +1363,32 @@ def merge_previous_file_entries(
     previous_file_entries: dict[int | str, dict[str, Any]],
 ) -> None:
     for file_id, previous in previous_file_entries.items():
+        source_url = str(
+            previous.get("url")
+            or previous.get("external_url")
+            or previous.get("html_url")
+            or ""
+        )
+        if (
+            isinstance(file_id, int)
+            and source_url
+            and first_file_id(source_url) is None
+            and looks_like_document(urllib.parse.urlparse(source_url).path)
+        ):
+            continue
+        previous_name = str(previous.get("display_name") or previous.get("filename") or "").casefold()
+        if (
+            isinstance(file_id, str)
+            and file_id.startswith("url:")
+            and not previous.get("local_path")
+            and previous_name
+            and any(
+                isinstance(current_id, int)
+                and str(current.get("display_name") or current.get("filename") or "").casefold() == previous_name
+                for current_id, current in file_entries.items()
+            )
+        ):
+            continue
         if file_id not in file_entries:
             file_entries[file_id] = previous
             continue
@@ -1476,7 +1514,7 @@ def download_course_files(
             if entry.get("external_file") or not isinstance(file_id, int):
                 prepared.append((index, file_id, entry, entry.copy()))
                 continue
-            future = executor.submit(fetch_file_metadata, client, course_id, file_id)
+            future = executor.submit(fetch_file_metadata, client, course_id, file_id, entry)
             metadata_jobs[future] = (index, file_id, entry, label)
 
         for future in as_completed(metadata_jobs):
@@ -1493,6 +1531,7 @@ def download_course_files(
                 failed += 1
                 print_progress(index, total, "failed", label)
                 continue
+            entry.pop("warning", None)
             prepared.append((index, file_id, entry, file_obj))
 
     download_jobs = {}
@@ -1555,6 +1594,7 @@ def download_course_files(
             entry["local_path"] = relative_to_archive(saved, archive_dir)
             entry["download_size"] = saved.stat().st_size
             entry["downloaded_at"] = datetime.now(timezone.utc).isoformat()
+            entry.pop("warning", None)
             downloaded += 1
             print_progress(index, total, "downloaded", saved.name, entry["download_size"])
 
@@ -1565,6 +1605,7 @@ def fetch_file_metadata(
     client: CanvasClient,
     course_id: int,
     file_id: int,
+    fallback_entry: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     try:
         data = client.get(f"/api/v1/files/{file_id}")
@@ -1572,6 +1613,12 @@ def fetch_file_metadata(
         try:
             data = client.get(f"/api/v1/courses/{course_id}/files/{file_id}")
         except ApiError as course_error:
+            fallback_url = verifier_download_url(fallback_entry or {})
+            if fallback_url:
+                return {
+                    **(fallback_entry or {}),
+                    "url": fallback_url,
+                }
             raise ApiError(
                 course_error.code,
                 course_error.url,
@@ -1580,6 +1627,19 @@ def fetch_file_metadata(
     if not isinstance(data, dict):
         raise ApiError(500, f"/api/v1/files/{file_id}", "File metadata was not a JSON object.")
     return data
+
+
+def verifier_download_url(entry: dict[str, Any]) -> str | None:
+    for key in ("url", "html_url", "preview_url"):
+        value = str(entry.get(key) or "")
+        if "verifier=" not in value:
+            continue
+        path = urllib.parse.urlparse(value).path
+        if re.search(r"/users/\d+/files/\d+/(preview|download)$", path):
+            return value
+        if re.search(r"/files/\d+/download$", path):
+            return value
+    return None
 
 
 def print_progress(index: int, total: int, status: str, name: str, size: int | None = None) -> None:
