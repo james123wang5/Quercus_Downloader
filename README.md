@@ -104,6 +104,18 @@ Check which known files are still missing locally:
 python3 tools/missing_downloads.py
 ```
 
+Show a compact per-course summary:
+
+```bash
+python3 tools/course_download_report.py
+```
+
+Show each missing file grouped under its course:
+
+```bash
+python3 tools/course_download_report.py --details
+```
+
 Show every missing row:
 
 ```bash
@@ -296,6 +308,18 @@ python3 sync_quercus.py --download-files --workers 4
 
 ```bash
 python3 tools/missing_downloads.py
+```
+
+按课程显示简洁汇总：
+
+```bash
+python3 tools/course_download_report.py
+```
+
+按课程列出每个缺失文件：
+
+```bash
+python3 tools/course_download_report.py --details
 ```
 
 显示全部缺失记录：
