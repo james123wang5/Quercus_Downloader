@@ -64,26 +64,26 @@ button {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 134px minmax(0, 1fr);
+  grid-template-columns: 84px minmax(0, 1fr);
   background: #fff;
 }
 
 .app-shell.global-nav-collapsed {
-  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-columns: 54px minmax(0, 1fr);
 }
 
 .app-shell.global-nav-collapsed .global-nav {
-  width: 86px;
+  width: 54px;
 }
 
 .app-shell.global-nav-collapsed .crest,
 .app-shell.global-nav-collapsed .nav-icon {
-  width: 86px;
-  min-width: 86px;
+  width: 54px;
+  min-width: 54px;
 }
 
 .app-shell.global-nav-collapsed .nav-icon {
-  min-height: 56px;
+  min-height: 54px;
   grid-template-rows: 1fr;
 }
 
@@ -92,17 +92,17 @@ button {
 }
 
 .app-shell.global-nav-collapsed .nav-icon svg {
-  width: 31px;
-  height: 31px;
+  width: 26px;
+  height: 26px;
 }
 
 .app-shell.global-nav-collapsed .crest {
-  height: 104px;
+  height: 70px;
 }
 
 .app-shell.global-nav-collapsed .crest svg {
-  width: 56px;
-  height: 56px;
+  width: 42px;
+  height: 42px;
 }
 
 .global-nav,
@@ -110,7 +110,7 @@ button {
   position: sticky;
   top: 0;
   align-self: start;
-  width: 134px;
+  width: 84px;
   height: calc(100vh - 4px);
   display: flex;
   flex-direction: column;
@@ -124,8 +124,8 @@ button {
 }
 
 .crest {
-  width: 134px;
-  height: 112px;
+  width: 84px;
+  height: 70px;
   display: grid;
   place-items: center;
   background: var(--ic-brand-primary-dark);
@@ -133,8 +133,8 @@ button {
 }
 
 .crest svg {
-  width: 62px;
-  height: 62px;
+  width: 42px;
+  height: 42px;
   fill: #fff;
   stroke: #fff;
   stroke-width: 1.7;
@@ -144,13 +144,13 @@ button {
 
 .nav-icon,
 .ic-app-header__menu-list-link {
-  width: 134px;
-  min-height: 78px;
+  width: 84px;
+  min-height: 72px;
   display: grid;
-  grid-template-rows: 34px auto;
+  grid-template-rows: 30px auto;
   place-items: center;
-  gap: 5px;
-  padding: 8px 7px;
+  gap: 4px;
+  padding: 8px 4px;
   border: 0;
   background: transparent;
   color: #fff;
@@ -159,8 +159,8 @@ button {
 }
 
 .nav-icon svg {
-  width: 32px;
-  height: 32px;
+  width: 27px;
+  height: 27px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.65;
@@ -170,7 +170,7 @@ button {
 
 .nav-icon span {
   color: currentColor;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.1;
 }
 

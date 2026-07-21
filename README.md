@@ -98,6 +98,39 @@ Use more workers when the network and Canvas instance are stable:
 python3 sync_quercus.py --download-files --workers 4
 ```
 
+Check which known files are still missing locally:
+
+```bash
+python3 tools/missing_downloads.py
+```
+
+Show every missing row:
+
+```bash
+python3 tools/missing_downloads.py --limit 999
+```
+
+Export the missing-file report as a TSV file:
+
+```bash
+python3 tools/missing_downloads.py --tsv --limit 999 > /tmp/missing-downloads.tsv
+open /tmp/missing-downloads.tsv
+```
+
+Only show files that are worth retrying:
+
+```bash
+python3 tools/missing_downloads.py --category retryable-network --limit 999
+```
+
+The report categories mean:
+
+- `retryable-network`: network, DNS, SSL, timeout, reset, or incomplete-transfer failure. Re-running downloads may fix it.
+- `permission-or-private`: Canvas returned 401 or 403. The token cannot access the file.
+- `missing-or-deleted`: Canvas or the external site returned 404. The file is probably deleted, expired, or the link is stale.
+- `bad-or-nonfile-link`: the page looked like a file link but the endpoint is not a downloadable file.
+- `not-attempted`: the archive knows about the file but no download warning was recorded yet.
+
 ## Local Data
 
 Downloaded content is stored under:
@@ -258,6 +291,39 @@ PYTHONUNBUFFERED=1 python3 sync_quercus.py \
 ```bash
 python3 sync_quercus.py --download-files --workers 4
 ```
+
+查看哪些已识别文件还没有下载到本地：
+
+```bash
+python3 tools/missing_downloads.py
+```
+
+显示全部缺失记录：
+
+```bash
+python3 tools/missing_downloads.py --limit 999
+```
+
+导出成 TSV 表格：
+
+```bash
+python3 tools/missing_downloads.py --tsv --limit 999 > /tmp/missing-downloads.tsv
+open /tmp/missing-downloads.tsv
+```
+
+只看值得重试的网络类失败：
+
+```bash
+python3 tools/missing_downloads.py --category retryable-network --limit 999
+```
+
+分类含义：
+
+- `retryable-network`：网络、DNS、SSL、超时、连接重置或下载不完整，重新运行下载可能成功。
+- `permission-or-private`：Canvas 返回 401 或 403，当前 token 没权限。
+- `missing-or-deleted`：Canvas 或外部网站返回 404，通常是文件已删除、过期或链接失效。
+- `bad-or-nonfile-link`：页面里像文件链接，但实际端点不是可下载文件。
+- `not-attempted`：本地已识别该文件，但还没有记录下载失败原因。
 
 ## 本地数据
 
